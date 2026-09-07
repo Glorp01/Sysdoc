@@ -1,10 +1,14 @@
 from __future__ import annotations
 
-import anthropic
+import os
 
+from google import genai
+from google.genai import types
+
+from sysdoc.core.config import load_api_key
 from sysdoc.core.models import ScanResult
 
-MODEL = "claude-sonnet-5"
+MODEL = "gemini-2.5-flash"
 
 SYSTEM_PROMPT = (
     "You are a troubleshooting assistant built into a CLI tool called sysdoc. "
@@ -14,25 +18,33 @@ SYSTEM_PROMPT = (
 )
 
 
+def _format_context(scan_results: list[ScanResult] | None) -> str:
+    if not scan_results:
+        return ""
+
+    lines = ["Here are the latest scan results:", ""]
+    for result in scan_results:
+        lines.append(f"[{result.scanner_name} scan]")
+        for finding in result.findings:
+            lines.append(f"- ({finding.severity.value}) {finding.title}: {finding.detail}")
+            if finding.suggested_fix:
+                lines.append(f"  Suggested fix: {finding.suggested_fix}")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def ask_ai(question: str, scan_results: list[ScanResult] | None = None) -> str:
-    client = anthropic.Anthropic()
+    api_key = os.environ.get("GEMINI_API_KEY") or load_api_key()
+    if not api_key:
+        raise RuntimeError("No API key found. Run 'sysdoc configure' first.")
 
-    context = ""
-    if scan_results:
-        context = "Here are the latest scan results:\n\n"
-        for result in scan_results:
-            context += f"[{result.scanner_name} scan]\n"
-            for finding in result.findings:
-                context += f"- ({finding.severity.value}) {finding.title}: {finding.detail}\n"
-                if finding.suggested_fix:
-                    context += f"  Suggested fix: {finding.suggested_fix}\n"
-        context += "\n"
-
-    message = client.messages.create(
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
         model=MODEL,
-        max_tokens=1024,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": f"{context}Question: {question}"}],
+        contents=f"{_format_context(scan_results)}Question: {question}",
+        config=types.GenerateContentConfig(
+            system_instruction=SYSTEM_PROMPT,
+            max_output_tokens=1024,
+        ),
     )
-    text_blocks = [block.text for block in message.content if block.type == "text"]
-    return "\n".join(text_blocks)
+    return response.text or "(no response received)"

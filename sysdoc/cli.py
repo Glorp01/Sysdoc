@@ -1,13 +1,18 @@
 from __future__ import annotations
 
+import io
+import sys
+
 import typer
 from rich.console import Console
 
+from sysdoc.core.ai import ask_ai
+from sysdoc.core.config import save_api_key
 from sysdoc.core.models import ScanResult, Severity
 from sysdoc.core.orchestrator import Orchestrator
+from sysdoc.scanners.base import Scanner
 from sysdoc.scanners.network import NetworkScanner
-
-from sysdoc.core.ai import ask_ai
+from sysdoc.scanners.storage import StorageScanner
 
 app = typer.Typer(
     name="sysdoc",
@@ -17,6 +22,10 @@ app = typer.Typer(
 scan_app = typer.Typer(help="Run diagnostic scans.")
 app.add_typer(scan_app, name="scan")
 
+# Legacy Windows consoles default to cp1252, which cannot encode the ● marker.
+if isinstance(sys.stdout, io.TextIOWrapper):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 console = Console()
 
 SEVERITY_COLORS = {
@@ -25,6 +34,10 @@ SEVERITY_COLORS = {
     Severity.WARNING: "yellow",
     Severity.CRITICAL: "bold red",
 }
+
+
+def _all_scanners() -> list[Scanner]:
+    return [NetworkScanner(), StorageScanner()]
 
 
 def _print_results(results: list[ScanResult]) -> None:
@@ -48,14 +61,14 @@ def scan_network() -> None:
 @scan_app.command("storage")
 def scan_storage() -> None:
     """Check disk space and drive health."""
-    console.print("[bold cyan]Running storage scan...[/bold cyan]")
-    console.print("[yellow]TODO: wire up the storage scanner (Step 7)[/yellow]")
+    orchestrator = Orchestrator([StorageScanner()])
+    _print_results(orchestrator.run_all())
 
 
 @scan_app.command("all")
 def scan_all() -> None:
     """Run every available scanner."""
-    orchestrator = Orchestrator([NetworkScanner()])
+    orchestrator = Orchestrator(_all_scanners())
     _print_results(orchestrator.run_all())
 
 
@@ -67,7 +80,7 @@ def ask(
 ) -> None:
     """Ask the AI assistant a free-form troubleshooting question."""
     console.print("[dim]Gathering system info...[/dim]")
-    orchestrator = Orchestrator([NetworkScanner()])
+    orchestrator = Orchestrator(_all_scanners())
     results = orchestrator.run_all()
 
     console.print("[dim]Thinking...[/dim]")
@@ -78,6 +91,14 @@ def ask(
         raise typer.Exit(code=1)
 
     console.print(f"\n[bold cyan]sysdoc:[/bold cyan] {answer}")
+
+
+@app.command("configure")
+def configure() -> None:
+    """Save your Gemini API key so you don't have to set it every session."""
+    api_key = typer.prompt("Enter your Gemini API key", hide_input=True)
+    save_api_key(api_key)
+    console.print("[green]API key saved.[/green]")
 
 
 if __name__ == "__main__":

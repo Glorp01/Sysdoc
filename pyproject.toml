@@ -7,7 +7,7 @@ dependencies = [
     "typer",
     "rich",
     "psutil",
-    "anthropic",
+    "google-genai",
 ]
 
 [project.scripts]
