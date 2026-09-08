@@ -1,0 +1,4 @@
+include requirements-build.txt
+recursive-include packaging *.py *.iss
+recursive-include scripts *.py *.ps1
+recursive-include tests *.py

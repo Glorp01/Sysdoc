@@ -10,7 +10,7 @@ class DummyScanner(Scanner):
         return [Finding(title="Test finding", severity=Severity.OK, detail="Wiring works correctly")]
 
 
-if __name__ == "__main__":
+def test_orchestrator():
     orchestrator = Orchestrator([DummyScanner()])
     results = orchestrator.run_all()
     assert len(results) == 1

@@ -1,138 +1,100 @@
-# sysdoc
+# Sysdoc
 
-A CLI assistant that diagnoses problems with your PC, network, and games — then explains them in plain English.
+A Windows desktop and command-line assistant that checks your PC, network, and games, then explains what to fix. Local scans work without an account or API key. Optional Gemini troubleshooting uses your real scan results.
 
-`sysdoc` runs real diagnostic checks locally (fast and free), then optionally hands the results to Google's Gemini so you get an actual explanation and fix plan instead of a wall of raw numbers.
+## Install on Windows
 
-```
-$ sysdoc scan all
+1. [Download the latest Sysdoc installer](https://github.com/Glorp01/Sysdoc/releases/latest/download/Sysdoc-Setup-x64.exe).
+2. Run **Sysdoc-Setup-x64.exe**. It installs for your Windows account; Python and administrator access are not required.
+3. Open **Sysdoc** from the Start menu. You can also choose a desktop shortcut during setup.
 
-network scan
-● Network latency normal
-   Average ping to 1.1.1.1 is 23ms.
-● DNS resolution working
-   Successfully resolved: roblox.com, steamcommunity.com, google.com
-● Roblox reachable
-   Successfully connected to roblox.com:443.
+Requires Windows 10 or 11, x64. The installer is currently unsigned, so Windows may show an unknown-publisher warning. Download it from this repository's [GitHub Releases](https://github.com/Glorp01/Sysdoc/releases) page.
 
-storage scan
-● Drive C:\ has healthy free space
-   136.7GB free of 475.8GB (71% used).
-● Drive D:\ is getting full
-   58.1GB free of 931.5GB (94% used).
-   Fix: Uninstall unused games or move large files to another drive.
-```
+## Update without downloading another installer yourself
 
-## Features
+Click **Check for updates** at the top of the app. When an update is available, confirm **Yes**. Sysdoc downloads and verifies the update, closes, upgrades the existing installation, and reopens. Your saved Gemini API key stays in `%USERPROFILE%\.sysdoc\config.json`.
 
-- **Network diagnostics** — ping/latency, packet loss, DNS resolution, and TCP reachability to game services (Roblox, Steam)
-- **Storage diagnostics** — free space and capacity warnings across every drive, tuned for game installs and updates
-- **AI troubleshooting** — ask free-form questions and get answers grounded in your actual scan results, not generic advice
-- **Severity-ranked findings** — every check reports OK / INFO / WARNING / CRITICAL with a suggested fix
+Updates come from published stable releases of `Glorp01/Sysdoc`. Downloads must match the release's SHA-256 digest and size before the installer can run. Failed downloads leave the installed app untouched. Updates require an internet connection and are installed only after you confirm them.
 
-## Requirements
+Existing users of the old standalone `sysdoc.exe` need to run the new installer once to get the desktop app and in-app updates. Python/source installations continue to use pip for upgrades.
 
-- Windows 10 or 11
-- Python 3.11+ (not needed if you use the standalone `.exe`)
-- A Gemini API key for the `ask` command — free tier available at [aistudio.google.com/apikey](https://aistudio.google.com/apikey). Scans work without one.
+## Use the desktop app
 
-## Installation
+- Choose **All checks**, **Network**, or **Storage**, then click **Run scan**.
+- Results show severity, an explanation, and suggested fixes.
+- For AI help, click **Set AI key** and save a [Gemini API key](https://aistudio.google.com/apikey). Enter a question and click **Ask AI**.
 
-### Option 1 — Standalone executable (no Python needed)
+AI requests send your question and scan results to Google Gemini and may incur API charges. `GEMINI_API_KEY`, if set, takes precedence over the saved key. Scans run locally and do not require AI.
 
-Download `sysdoc.exe` from the release, put it somewhere on your `PATH`, and run it. This is the easiest option if you just want to use the tool.
+## Command line
 
-### Option 2 — Install the wheel
-
-```powershell
-pip install sysdoc-0.1.0-py3-none-any.whl
-```
-
-### Option 3 — From source
-
-```powershell
-git clone <repo-url>
-cd F.R.I.D.A.Y
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -e .
-```
-
-## Setup
-
-Scans work immediately with no configuration. To enable the `ask` command, save your Gemini API key once:
-
-```powershell
-sysdoc configure
-```
-
-The prompt hides your input, and the key is stored in `~/.sysdoc/config.json` — never in the project folder, so it can't be committed by accident. You can also set the `GEMINI_API_KEY` environment variable instead, which takes precedence.
-
-## Usage
+The Windows installer also includes `%LOCALAPPDATA%\Programs\Sysdoc\sysdoc.exe` (or your chosen installation folder). Add that folder to your `PATH` if you want to type `sysdoc` from any terminal.
 
 | Command | What it does |
 | --- | --- |
+| `sysdoc gui` | Open the desktop window |
 | `sysdoc scan network` | Ping, packet loss, DNS, and game-service reachability |
-| `sysdoc scan storage` | Free space and capacity warnings for every drive |
-| `sysdoc scan all` | Every scanner in one pass |
-| `sysdoc ask "<question>"` | Runs all scans, then answers your question using the results as context |
+| `sysdoc scan storage` | Drive capacity and free-space warnings |
+| `sysdoc scan all` | Run every scanner |
+| `sysdoc ask "why does my game disconnect"` | Scan and ask Gemini for help |
 | `sysdoc configure` | Save your Gemini API key |
+| `sysdoc --version` | Show the current version |
+| `sysdoc update --check` | Check GitHub without installing |
+| `sysdoc update` | Confirm, download, and apply an update |
+| `sysdoc update --yes` | Apply an available update without a prompt |
 
-Examples:
+## Install from source
+
+Python 3.11+ with Tk is required. For development on Windows:
 
 ```powershell
-sysdoc scan network
-sysdoc ask "why does roblox keep disconnecting me"
-sysdoc ask "is my drive too full to install a 90gb game"
+git clone https://github.com/Glorp01/Sysdoc.git
+cd Sysdoc
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev]"
+sysdoc gui
 ```
 
-Note that `ask` makes a billed Gemini API call each time (small, but not free).
+Alternatively, download the wheel from a release and install it with `python -m pip install <wheel-path>`. Upgrade with `python -m pip install --upgrade <new-wheel-path>`. Source users should pull the latest code and reinstall with `python -m pip install -e .`.
+
+## Publish an update
+
+**Push changes to `main`.** The [Windows release workflow](.github/workflows/release.yml) automatically:
+
+1. Assigns a version using the series in `sysdoc/__init__.py` plus the workflow run number. With a base of `0.2.0`, run 1 produces `0.2.1`, run 2 produces `0.2.2`, and so on.
+2. Runs the tests, builds the desktop app and CLI, and creates a per-user Windows installer.
+3. Tests installation, an in-place upgrade, installed CLI diagnostics, settings preservation, and uninstallation on a disposable Windows runner.
+4. Uploads the installer, wheel, source distribution, and checksums to a draft GitHub Release, then publishes it after all uploads finish.
+
+Installed users can then click **Check for updates**. No manual tags, version edits, or artifact uploads are needed for routine updates. Pull requests build and test without publishing. You can also run the workflow manually from the Actions tab on `main`.
+
+To start a new release series, change the base version in `sysdoc/__init__.py`, for example to `0.3.0`. Keep the series increasing and preserve the workflow file/run counter. Re-running a completed release does not replace its published downloads. To roll back a faulty change, revert the code and push a new version; the updater will not downgrade users.
+
+The build job uses read-only repository access; only the publish job has `contents: write`. The workflow uses GitHub's built-in token and requires GitHub Actions to be enabled. Keep the repository public so installed apps can check and download releases without credentials.
+
+## Build locally
+
+Use Windows x64, Python 3.13, and [Inno Setup 6](https://jrsoftware.org/isinfo.php). `requirements-build.txt` pins the tested Windows build dependencies.
+
+```powershell
+python -m pip install -r requirements-build.txt
+python -m pip install -e . --no-deps
+python -m pytest -q
+./scripts/build_windows.ps1
+```
+
+Release artifacts are written to `dist/release/`. The frozen executables are in `dist/windows/`. The installer smoke test is intended for disposable CI runners, since it registers and uninstalls a real app.
 
 ## How it works
 
-```
-scanners/          each check returns Finding objects
-    ↓
-Orchestrator       runs every scanner, collects ScanResults
-    ↓
-CLI                prints findings, color-coded by severity
-    ↓
-core/ai.py         optionally sends findings + your question to Gemini
-```
+Each scanner returns `Finding` objects. `Orchestrator` collects them into scan results, which the desktop app and CLI display. The optional AI layer receives those same results as context.
 
-Every scanner implements one method — `run() -> list[Finding]` — so the CLI, orchestrator, and AI layer never need scanner-specific code.
-
-### Adding a new scanner
-
-1. Create `sysdoc/scanners/yourthing.py` with a class subclassing `Scanner`, setting `name` and implementing `run()`.
-2. Return `Finding` objects with a `title`, `severity`, `detail`, and optional `suggested_fix`.
-3. Add it to `_all_scanners()` in `sysdoc/cli.py`.
-
-That's it — it automatically appears in `scan all` and gets fed to the AI layer as context.
-
-## Building a release
-
-```powershell
-# Wheel + source distribution
-pip install build
-python -m build
-
-# Standalone Windows executable
-pip install pyinstaller
-pyinstaller --onefile --name sysdoc sysdoc/cli.py
-```
-
-Artifacts land in `dist/`.
+To add a scanner, subclass `Scanner` in `sysdoc/scanners/`, implement `run() -> list[Finding]`, and register it in the CLI and desktop scanner lists.
 
 ## Known limitations
 
-- Ping output parsing targets English-language Windows; other locales may report latency as unparsed.
-- Drive health is based on free space only — SMART status is not read yet.
-- Roblox and Steam are checked for network reachability only; log/crash-file parsing is not implemented yet.
-
-## Roadmap
-
-- Roblox log and crash-file parsing for known error signatures
-- Steam log parsing (download corruption, disk write errors, VAC issues)
-- SMART drive health via WMI
-- GPU driver and DirectX checks
+- Ping parsing currently targets English-language Windows.
+- Drive health is based on free space; SMART data is not read yet.
+- Game checks cover Roblox/Steam network reachability, not game logs or crash files.
+- In-app installation supports the Windows installer distribution; pip and source users update through their Python environment.

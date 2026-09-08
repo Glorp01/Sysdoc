@@ -6,6 +6,7 @@ import sys
 import typer
 from rich.console import Console
 
+from sysdoc import __version__
 from sysdoc.core.ai import ask_ai
 from sysdoc.core.config import save_api_key
 from sysdoc.core.models import ScanResult, Severity
@@ -18,6 +19,7 @@ app = typer.Typer(
     name="sysdoc",
     help="Diagnose and fix issues with your PC, network, and games.",
     no_args_is_help=True,
+    invoke_without_command=True,
 )
 scan_app = typer.Typer(help="Run diagnostic scans.")
 app.add_typer(scan_app, name="scan")
@@ -34,6 +36,50 @@ SEVERITY_COLORS = {
     Severity.WARNING: "yellow",
     Severity.CRITICAL: "bold red",
 }
+
+
+@app.callback()
+def main(version: bool = typer.Option(False, "--version", help="Show the installed version.", is_eager=True)) -> None:
+    if version:
+        console.print(f"sysdoc {__version__}")
+        raise typer.Exit()
+
+
+@app.command("gui")
+def gui() -> None:
+    """Open the desktop app."""
+    from sysdoc.gui import main as open_gui
+    open_gui()
+
+
+@app.command("update")
+def update(
+    check: bool = typer.Option(False, "--check", help="Check without installing."),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Install without a confirmation prompt."),
+) -> None:
+    """Check GitHub for a new version and update an installed Windows app."""
+    from sysdoc.core.updater import (
+        UpdateError, check_for_update, download_update, installed_directory, launch_installer,
+    )
+    try:
+        console.print(f"Installed version: {__version__}. Checking GitHub...")
+        release = check_for_update()
+        if release is None:
+            console.print("No newer published version is available.")
+            return
+        console.print(f"Sysdoc {release.version} is available.")
+        if check:
+            return
+        installed_directory()
+        if not yes and not typer.confirm("Download and install the update? Sysdoc will close."):
+            return
+        with console.status("Downloading and verifying update..."):
+            installer = download_update(release)
+        launch_installer(installer)
+        console.print("Installing update. Sysdoc will reopen when installation finishes.")
+    except UpdateError as exc:
+        console.print(str(exc), style="red", markup=False)
+        raise typer.Exit(code=1)
 
 
 def _all_scanners() -> list[Scanner]:

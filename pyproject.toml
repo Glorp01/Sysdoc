@@ -1,7 +1,7 @@
 [project]
 name = "sysdoc"
-version = "0.1.0"
-description = "CLI assistant for diagnosing game and PC issues"
+dynamic = ["version"]
+description = "Desktop and CLI assistant for diagnosing game and PC issues"
 readme = "README.md"
 requires-python = ">=3.11"
 keywords = ["diagnostics", "troubleshooting", "cli", "gaming", "network"]
@@ -22,9 +22,21 @@ dependencies = [
 [project.scripts]
 sysdoc = "sysdoc.cli:app"
 
+[project.gui-scripts]
+sysdoc-gui = "sysdoc.gui:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "build>=1,<2", "pyinstaller>=6.19,<7"]
+
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["sysdoc*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "sysdoc.__version__"}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

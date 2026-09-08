@@ -30,6 +30,7 @@ class NetworkScanner(Scanner):
                 capture_output=True,
                 text=True,
                 timeout=10,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             )
         except Exception as exc:
             return Finding(
