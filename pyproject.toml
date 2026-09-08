@@ -2,7 +2,16 @@
 name = "sysdoc"
 version = "0.1.0"
 description = "CLI assistant for diagnosing game and PC issues"
+readme = "README.md"
 requires-python = ">=3.11"
+keywords = ["diagnostics", "troubleshooting", "cli", "gaming", "network"]
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Topic :: System :: Systems Administration",
+]
 dependencies = [
     "typer",
     "rich",
@@ -16,3 +25,6 @@ sysdoc = "sysdoc.cli:app"
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["sysdoc*"]
