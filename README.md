@@ -1,47 +1,104 @@
 # Sysdoc
 
-A Windows desktop and command-line assistant that checks your PC, network, and games, then explains what to fix. Local scans work without an account or API key. Optional Gemini troubleshooting uses your real scan results.
+Sysdoc is an AI repair assistant for Windows. Describe what's wrong, such as a game that crashes, Wi-Fi that keeps dropping, or a PC that suddenly got slow. Sysdoc investigates your PC, explains what it found, and proposes a fix plan showing the exact commands it wants to run. Nothing changes until you approve.
+
+It uses your own API key for **Claude** (Anthropic), **GPT** (OpenAI), or **Gemini** (Google). Quick local scans work without a key.
+
+## How it works
+
+1. **Describe the problem.** Run `sysdoc fix "Valorant crashes when a match starts"`, or run `sysdoc` and type it in.
+2. **Allow scanning.** The first time the assistant needs to look at your PC, Sysdoc asks. Allow it for this session, always, before every check, or not at all.
+3. **The assistant investigates** with read-only checks: system details and driver versions, event logs, game and app logs, installed programs and games, services, disk space, and network tests. Each check is shown as it runs.
+4. **Review the fix plan.** Sysdoc shows the diagnosis, the evidence, and every step with an explanation, a risk level, whether it needs administrator rights, and the exact PowerShell script.
+5. **Decide.** Run all steps, go step by step, request changes, or cancel. Approved scripts run exactly as shown, with live output. Steps that need administrator rights show a Windows permission prompt.
+6. **The assistant verifies the fix** where it can and summarizes what changed and anything left for you to do.
+
+### Safety and privacy
+
+- Investigation commands must only read. Sysdoc checks each command before it runs. Commands that would change files, settings, services, or running programs are refused and must be proposed in a fix plan. Commands Sysdoc can't verify need your explicit approval, even when scanning is allowed.
+- Commands and files involving passwords, keys, browser credentials, or Sysdoc's own settings are always blocked.
+- An approved plan can't be changed before it runs. Administrator steps are verified against the approved script first.
+- Every step that runs is recorded in `%USERPROFILE%\.sysdoc\history.jsonl`. Run `sysdoc history` to review them.
+- What the assistant reads (system details, command output, log excerpts) is sent to the AI provider you chose. API usage is billed to your provider account.
+
+These checks are a safety net, not a sandbox. Read each plan before you approve it.
 
 ## Install on Windows
 
 1. [Download the latest Sysdoc installer](https://github.com/Glorp01/Sysdoc/releases/latest/download/Sysdoc-Setup-x64.exe).
 2. Run **Sysdoc-Setup-x64.exe**. It installs for your Windows account; Python and administrator access are not required.
-3. Open **Sysdoc** from the Start menu. You can also choose a desktop shortcut during setup.
+3. Open **Sysdoc AI Assistant** from the Start menu to fix a problem, or **Sysdoc** for the desktop scanner.
 
 Requires Windows 10 or 11, x64. The installer is currently unsigned, so Windows may show an unknown-publisher warning. Download it from this repository's [GitHub Releases](https://github.com/Glorp01/Sysdoc/releases) page.
 
-## Update without downloading another installer yourself
+## Connect an AI provider
 
-Click **Check for updates** at the top of the app. When an update is available, confirm **Yes**. Sysdoc downloads and verifies the update, closes, upgrades the existing installation, and reopens. Your saved Gemini API key stays in `%USERPROFILE%\.sysdoc\config.json`.
+Run `sysdoc setup`. Running `sysdoc` for the first time also starts setup. Choose a provider, paste your API key, and pick a model. Sysdoc checks the key before saving it.
 
-Updates come from published stable releases of `Glorp01/Sysdoc`. Downloads must match the release's SHA-256 digest and size before the installer can run. Failed downloads leave the installed app untouched. Updates require an internet connection and are installed only after you confirm them.
+| Provider | Get a key | Default model | Environment variable |
+| --- | --- | --- | --- |
+| Claude (Anthropic) | [platform.claude.com](https://platform.claude.com/settings/keys) | `claude-opus-5` | `ANTHROPIC_API_KEY` |
+| GPT (OpenAI) | [platform.openai.com](https://platform.openai.com/api-keys) | `gpt-5.5` | `OPENAI_API_KEY` |
+| Gemini (Google) | [aistudio.google.com](https://aistudio.google.com/apikey) | `gemini-3.5-flash` | `GEMINI_API_KEY` or `GOOGLE_API_KEY` |
 
-Existing users of the old standalone `sysdoc.exe` need to run the new installer once to get the desktop app and in-app updates. Python/source installations continue to use pip for upgrades.
+- Settings and keys are saved in `%USERPROFILE%\.sysdoc\config.json`. Environment variables take precedence over saved keys.
+- `SYSDOC_PROVIDER` (`claude`, `gpt`, or `gemini`) chooses a provider without changing saved settings.
+- Any model your key can access works. `sysdoc models` lists them; switch with `--model` or `/model`.
+- `OPENAI_BASE_URL` points the GPT provider at an OpenAI-compatible server.
+- Gemini keys saved by Sysdoc 0.2 keep working.
 
-## Use the desktop app
+## Use the assistant
 
-- Choose **All checks**, **Network**, or **Storage**, then click **Run scan**.
-- Results show severity, an explanation, and suggested fixes.
-- For AI help, click **Set AI key** and save a [Gemini API key](https://aistudio.google.com/apikey). Enter a question and click **Ask AI**.
-
-AI requests send your question and scan results to Google Gemini and may incur API charges. `GEMINI_API_KEY`, if set, takes precedence over the saved key. Scans run locally and do not require AI.
-
-## Command line
-
-The Windows installer also includes `%LOCALAPPDATA%\Programs\Sysdoc\sysdoc.exe` (or your chosen installation folder). Add that folder to your `PATH` if you want to type `sysdoc` from any terminal.
+Start it with `sysdoc` or `sysdoc fix "describe the problem"`, then chat normally. Press Ctrl+C to interrupt the assistant or a running step. Inside the assistant:
 
 | Command | What it does |
 | --- | --- |
-| `sysdoc gui` | Open the desktop window |
-| `sysdoc scan network` | Ping, packet loss, DNS, and game-service reachability |
-| `sysdoc scan storage` | Drive capacity and free-space warnings |
-| `sysdoc scan all` | Run every scanner |
-| `sysdoc ask "why does my game disconnect"` | Scan and ask Gemini for help |
-| `sysdoc configure` | Save your Gemini API key |
+| `/new` | Start a new conversation |
+| `/scan` | Run quick network and storage checks |
+| `/provider` | Switch between Claude, GPT, and Gemini |
+| `/model` | Change the AI model |
+| `/permissions` | Change whether Sysdoc may scan your PC |
+| `/history` | Show fixes Sysdoc has run |
+| `/setup` | Enter or change an API key |
+| `/exit` | Quit |
+
+Run `sysdoc fix --plan-only "..."` to get a diagnosis and plan without running anything. Run Sysdoc from an administrator terminal to avoid a permission prompt for each administrator step.
+
+## Command line
+
+The Windows installer includes `%LOCALAPPDATA%\Programs\Sysdoc\sysdoc.exe` (or your chosen installation folder). Add that folder to your `PATH` to type `sysdoc` from any terminal.
+
+| Command | What it does |
+| --- | --- |
+| `sysdoc` | Start the AI repair assistant |
+| `sysdoc fix "my game crashes on launch"` | Investigate and fix a problem, then keep chatting |
+| `sysdoc ask "why is my ping high"` | Quick advice from local scan results; the AI can't run anything |
+| `sysdoc scan` | Run every local check (also `scan network`, `scan storage`) |
+| `sysdoc setup` | Choose a provider and save its API key |
+| `sysdoc config` | Show providers, models, keys (masked), and scan permission |
+| `sysdoc models` | List the models your API key can use |
+| `sysdoc history` | Show fix steps Sysdoc has run |
+| `sysdoc gui` | Open the desktop app |
 | `sysdoc --version` | Show the current version |
 | `sysdoc update --check` | Check GitHub without installing |
 | `sysdoc update` | Confirm, download, and apply an update |
 | `sysdoc update --yes` | Apply an available update without a prompt |
+
+`--provider` and `--model` work with `sysdoc`, `fix`, and `ask`, for example `sysdoc --provider gemini`.
+
+## Use the desktop app
+
+- Choose **All checks**, **Network**, or **Storage**, then click **Run scan**. Results show severity, an explanation, and suggested fixes.
+- Click **Fix a problem with AI** to open the AI assistant in a terminal window.
+- For quick answers in the app, click **AI settings**, choose a provider, and save its API key. Enter a question and click **Ask AI**. Your question and scan results are sent to that provider.
+
+## Update without downloading another installer yourself
+
+Click **Check for updates** at the top of the desktop app, or run `sysdoc update`. When an update is available, confirm **Yes**. Sysdoc downloads and verifies the update, closes, upgrades the existing installation, and reopens. Your settings and API keys stay in `%USERPROFILE%\.sysdoc\config.json`.
+
+Updates come from published stable releases of `Glorp01/Sysdoc`. Downloads must match the release's SHA-256 digest and size before the installer can run. Failed downloads leave the installed app untouched. Updates require an internet connection and are installed only after you confirm them.
+
+Existing users of the old standalone `sysdoc.exe` need to run the new installer once to get the desktop app and in-app updates. Python/source installations continue to use pip for upgrades.
 
 ## Install from source
 
@@ -53,7 +110,7 @@ cd Sysdoc
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -e ".[dev]"
-sysdoc gui
+sysdoc
 ```
 
 Alternatively, download the wheel from a release and install it with `python -m pip install <wheel-path>`. Upgrade with `python -m pip install --upgrade <new-wheel-path>`. Source users should pull the latest code and reinstall with `python -m pip install -e .`.
@@ -62,14 +119,14 @@ Alternatively, download the wheel from a release and install it with `python -m 
 
 **Push changes to `main`.** The [Windows release workflow](.github/workflows/release.yml) automatically:
 
-1. Assigns a version using the series in `sysdoc/__init__.py` plus the workflow run number. With a base of `0.2.0`, run 1 produces `0.2.1`, run 2 produces `0.2.2`, and so on.
+1. Assigns a version using the series in `sysdoc/__init__.py` plus the workflow run number. With a base of `0.3.0`, run 20 produces `0.3.20`.
 2. Runs the tests, builds the desktop app and CLI, and creates a per-user Windows installer.
 3. Tests installation, an in-place upgrade, installed CLI diagnostics, settings preservation, and uninstallation on a disposable Windows runner.
 4. Uploads the installer, wheel, source distribution, and checksums to a draft GitHub Release, then publishes it after all uploads finish.
 
 Installed users can then click **Check for updates**. No manual tags, version edits, or artifact uploads are needed for routine updates. Pull requests build and test without publishing. You can also run the workflow manually from the Actions tab on `main`.
 
-To start a new release series, change the base version in `sysdoc/__init__.py`, for example to `0.3.0`. Keep the series increasing and preserve the workflow file/run counter. Re-running a completed release does not replace its published downloads. To roll back a faulty change, revert the code and push a new version; the updater will not downgrade users.
+To start a new release series, change the base version in `sysdoc/__init__.py`, for example to `0.4.0`. Keep the series increasing and preserve the workflow file/run counter. Re-running a completed release does not replace its published downloads. To roll back a faulty change, revert the code and push a new version; the updater will not downgrade users.
 
 The build job uses read-only repository access; only the publish job has `contents: write`. The workflow uses GitHub's built-in token and requires GitHub Actions to be enabled. Keep the repository public so installed apps can check and download releases without credentials.
 
@@ -86,15 +143,28 @@ python -m pytest -q
 
 Release artifacts are written to `dist/release/`. The frozen executables are in `dist/windows/`. The installer smoke test is intended for disposable CI runners, since it registers and uninstalls a real app.
 
-## How it works
+## Project layout
 
-Each scanner returns `Finding` objects. `Orchestrator` collects them into scan results, which the desktop app and CLI display. The optional AI layer receives those same results as context.
+| Path | Purpose |
+| --- | --- |
+| `sysdoc/agent/session.py` | The repair conversation: tool calls, scan permission, plan approval, and step execution |
+| `sysdoc/agent/tools.py` | Read-only investigation tools the AI can call |
+| `sysdoc/agent/safety.py` | Classifies commands as read-only, changing, unverifiable, or sensitive |
+| `sysdoc/agent/plan.py` | The fix plan schema and validation |
+| `sysdoc/agent/executor.py` | Runs PowerShell with streamed output, timeouts, and UAC elevation |
+| `sysdoc/agent/prompts.py`, `audit.py` | The system prompt and the local history of executed steps |
+| `sysdoc/providers/` | Claude, GPT, and Gemini behind one tool-calling interface |
+| `sysdoc/ui/` | The terminal theme and interface |
+| `sysdoc/scanners/` | Local health checks that return `Finding` objects |
+| `sysdoc/cli.py`, `sysdoc/gui.py` | Command-line and desktop entry points |
 
-To add a scanner, subclass `Scanner` in `sysdoc/scanners/`, implement `run() -> list[Finding]`, and register it in the CLI and desktop scanner lists.
+To add an investigation tool, write a read-only function that returns a `ToolOutcome` and register it in `TOOLS` in `sysdoc/agent/tools.py`. To add a scanner, subclass `Scanner` in `sysdoc/scanners/`, implement `run() -> list[Finding]`, and register it in the CLI and desktop scanner lists.
 
 ## Known limitations
 
+- Windows only. Fix scripts target Windows PowerShell 5.1.
+- The read-only check recognises common Windows diagnostics; less common tools need your approval.
+- Stopping an administrator step with Ctrl+C may not end it immediately.
 - Ping parsing currently targets English-language Windows.
 - Drive health is based on free space; SMART data is not read yet.
-- Game checks cover Roblox/Steam network reachability, not game logs or crash files.
 - In-app installation supports the Windows installer distribution; pip and source users update through their Python environment.

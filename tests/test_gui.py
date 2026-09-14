@@ -4,8 +4,9 @@ from unittest.mock import Mock
 
 import pytest
 
+from sysdoc import gui
 from sysdoc.gui import SysdocWindow
-from sysdoc.core import updater
+from sysdoc.core import config, updater
 from sysdoc.core.models import Finding, ScanResult, Severity
 
 
@@ -84,3 +85,41 @@ def test_failed_installer_handoff_keeps_app_open(window, monkeypatch, tmp_path):
     monkeypatch.setattr("sysdoc.gui.messagebox.showerror", Mock())
     window._install(tmp_path / "installer.exe")
     assert not window.closed
+
+
+def test_ai_settings_save_the_provider_key_and_model(window):
+    dialog = gui.AISettingsDialog(window.root)
+    dialog.provider.set(dialog.labels[dialog.names.index("openai")])
+    dialog._provider_changed()
+    assert dialog.model.get() == "gpt-5.5"
+    dialog.key.set("sk-test-123456789012")
+    dialog.model.set("gpt-5.4-mini")
+    assert dialog.save()
+    assert config.get_provider() == "openai"
+    assert config.get_api_key("openai") == "sk-test-123456789012"
+    assert config.get_model("openai") == "gpt-5.4-mini"
+
+
+def test_ai_settings_require_a_key(window, monkeypatch):
+    error = Mock()
+    monkeypatch.setattr("sysdoc.gui.messagebox.showerror", error)
+    dialog = gui.AISettingsDialog(window.root)
+    assert not dialog.save()
+    error.assert_called_once()
+    assert not config.config_file().exists()
+    dialog.window.destroy()
+
+
+def test_assistant_opens_in_its_own_console(window, monkeypatch):
+    launch = Mock()
+    monkeypatch.setattr(gui.subprocess, "Popen", launch)
+    window.assistant_button.invoke()
+    args, kwargs = launch.call_args
+    assert args[0][-2:] == ["-m", "sysdoc"]
+    assert kwargs["env"]["PYINSTALLER_RESET_ENVIRONMENT"] == "1"
+
+
+def test_installed_app_opens_the_bundled_assistant(monkeypatch, tmp_path):
+    monkeypatch.setattr(gui.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(gui.sys, "executable", str(tmp_path / "sysdoc-gui.exe"))
+    assert gui.assistant_command() == [str(tmp_path / "sysdoc.exe")]

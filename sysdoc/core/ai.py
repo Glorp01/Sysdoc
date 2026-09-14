@@ -1,19 +1,15 @@
+"""Quick troubleshooting answers, without tools, from whichever AI provider is configured."""
 from __future__ import annotations
 
-import os
-
-from google import genai
-from google.genai import types
-
-from sysdoc.core.config import load_api_key
+from sysdoc.core import config
 from sysdoc.core.models import ScanResult
-
-MODEL = "gemini-2.5-flash"
+from sysdoc.providers import PROVIDERS, Provider, ProviderError, create_provider, resolve_provider_name
+from sysdoc.providers.base import Message
 
 SYSTEM_PROMPT = (
-    "You are a troubleshooting assistant built into a CLI tool called sysdoc. "
+    "You are a troubleshooting assistant built into a Windows app called Sysdoc. "
     "You help users fix problems with their PC, network, and games like Roblox and Steam. "
-    "You may be given structured scan results alongside the user's question — use them "
+    "You may be given structured scan results alongside the user's question; use them "
     "as ground truth. Give clear, concise, actionable advice. Avoid unnecessary caveats."
 )
 
@@ -33,18 +29,22 @@ def _format_context(scan_results: list[ScanResult] | None) -> str:
     return "\n".join(lines)
 
 
-def ask_ai(question: str, scan_results: list[ScanResult] | None = None) -> str:
-    api_key = os.environ.get("GEMINI_API_KEY") or load_api_key()
-    if not api_key:
-        raise RuntimeError("No API key found. Run 'sysdoc configure' first.")
+def configured_provider(provider: str | None = None, model: str | None = None) -> Provider:
+    """The provider from options, settings, or environment; raises ProviderError when none is usable."""
+    settings = config.load_config()
+    name = resolve_provider_name(provider) if provider else config.get_provider(settings)
+    if name is None:
+        raise ProviderError("No AI provider is set up yet. Run 'sysdoc setup' to connect Claude, GPT, or Gemini.")
+    key = config.get_api_key(name, settings)
+    if not key:
+        info = PROVIDERS[name]
+        raise ProviderError(f"No {info.label} API key found. Run 'sysdoc setup' or set {info.env_vars[0]}.")
+    return create_provider(name, key, model or config.get_model(name, settings))
 
-    client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(
-        model=MODEL,
-        contents=f"{_format_context(scan_results)}Question: {question}",
-        config=types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            max_output_tokens=1024,
-        ),
-    )
-    return response.text or "(no response received)"
+
+def ask_ai(question: str, scan_results: list[ScanResult] | None = None, *,
+           provider: str | None = None, model: str | None = None) -> str:
+    client = configured_provider(provider, model)
+    prompt = f"{_format_context(scan_results)}Question: {question}"
+    reply = client.complete(SYSTEM_PROMPT, [Message("user", text=prompt)], [])
+    return reply.text.strip() or "(no response received)"

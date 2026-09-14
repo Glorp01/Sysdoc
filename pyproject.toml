@@ -1,10 +1,10 @@
 [project]
 name = "sysdoc"
 dynamic = ["version"]
-description = "Desktop and CLI assistant for diagnosing game and PC issues"
+description = "AI repair assistant for Windows that diagnoses and fixes PC, network, and game problems using Claude, GPT, or Gemini"
 readme = "README.md"
 requires-python = ">=3.11"
-keywords = ["diagnostics", "troubleshooting", "cli", "gaming", "network"]
+keywords = ["diagnostics", "troubleshooting", "cli", "gaming", "network", "ai", "repair", "claude", "gpt", "gemini"]
 classifiers = [
     "Environment :: Console",
     "Intended Audience :: End Users/Desktop",
@@ -16,6 +16,8 @@ dependencies = [
     "typer",
     "rich",
     "psutil",
+    "anthropic",
+    "openai",
     "google-genai",
 ]
 

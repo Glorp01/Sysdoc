@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.2.0"
+  #define AppVersion "0.3.0"
 #endif
 
 [Setup]
@@ -37,6 +37,7 @@ Source: "..\dist\windows\sysdoc.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\Sysdoc"; Filename: "{app}\sysdoc-gui.exe"
+Name: "{autoprograms}\Sysdoc AI Assistant"; Filename: "{app}\sysdoc.exe"; Comment: "Diagnose and fix PC problems with AI"
 Name: "{autodesktop}\Sysdoc"; Filename: "{app}\sysdoc-gui.exe"; Tasks: desktopicon
 
 [Run]

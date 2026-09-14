@@ -92,7 +92,7 @@ jobs:
 
           Open **Sysdoc** from the Start menu. Use **Check for updates** to download future versions and update your installation. Sysdoc reopens when the update finishes; your saved API key stays on your PC.
 
-          The installer includes desktop diagnostics and the `sysdoc.exe` command-line tool. The wheel and source archive are for Python users. `SHA256SUMS.txt` lists download checksums.
+          The installer includes the Sysdoc AI Assistant (`sysdoc.exe`), which diagnoses and fixes PC problems using your own Claude, GPT, or Gemini API key, plus the desktop scanner. The wheel and source archive are for Python users. `SHA256SUMS.txt` lists download checksums.
           NOTES
             gh release create "$tag" --target "$COMMIT_SHA" --draft --title "Sysdoc $tag" --notes-file notes.md --generate-notes
           fi

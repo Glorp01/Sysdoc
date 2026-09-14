@@ -1,21 +1,119 @@
 """Small native desktop front end. All slow work stays off Tk's event thread."""
 from __future__ import annotations
 
+import ctypes
+import os
+from pathlib import Path
 from queue import Empty, Queue
+import subprocess
+import sys
 from threading import Thread
 import tkinter as tk
-from tkinter import messagebox, simpledialog, ttk
+from tkinter import messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
 from typing import Callable
 
 from sysdoc import __version__
+from sysdoc.core import config
 from sysdoc.core.ai import ask_ai
-from sysdoc.core.config import save_api_key
 from sysdoc.core.models import ScanResult
 from sysdoc.core.orchestrator import Orchestrator
 from sysdoc.core import updater
+from sysdoc.providers import PROVIDERS
 from sysdoc.scanners.network import NetworkScanner
 from sysdoc.scanners.storage import StorageScanner
+
+ACCENT = "#0ea5e9"
+
+
+def assistant_command() -> list[str]:
+    """The command that opens Sysdoc's terminal AI assistant."""
+    executable = Path(sys.executable)
+    if getattr(sys, "frozen", False):
+        return [str(executable.with_name("sysdoc.exe"))]
+    if executable.name.lower() == "pythonw.exe":
+        executable = executable.with_name("python.exe")
+    return [str(executable), "-m", "sysdoc"]
+
+
+def provider_label() -> str:
+    name = config.get_provider()
+    return PROVIDERS[name].label if name else "your AI provider"
+
+
+class AISettingsDialog:
+    """Choose Claude, GPT, or Gemini, and save its API key and model."""
+
+    def __init__(self, parent: tk.Misc):
+        self.saved = False
+        self.names = list(PROVIDERS)
+        self.labels = [f"{PROVIDERS[name].label} ({PROVIDERS[name].company})" for name in self.names]
+        current = config.get_provider() or self.names[0]
+
+        self.window = tk.Toplevel(parent)
+        self.window.title("AI settings")
+        self.window.resizable(False, False)
+        self.window.transient(parent)
+        frame = ttk.Frame(self.window, padding=20)
+        frame.pack(fill="both", expand=True)
+        ttk.Label(frame, text="Use your own API key from Claude, GPT, or Gemini. Usage is billed to that account.",
+                  wraplength=380).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 14))
+
+        ttk.Label(frame, text="Provider").grid(row=1, column=0, sticky="w", pady=4)
+        self.provider = tk.StringVar(value=self.labels[self.names.index(current)])
+        self.provider_choice = ttk.Combobox(frame, textvariable=self.provider, values=self.labels, state="readonly", width=34)
+        self.provider_choice.grid(row=1, column=1, sticky="ew", pady=4)
+        self.provider_choice.bind("<<ComboboxSelected>>", self._provider_changed)
+
+        ttk.Label(frame, text="API key").grid(row=2, column=0, sticky="w", pady=4)
+        self.key = tk.StringVar()
+        ttk.Entry(frame, textvariable=self.key, show="*", width=36).grid(row=2, column=1, sticky="ew", pady=4)
+        self.key_hint = tk.StringVar()
+        ttk.Label(frame, textvariable=self.key_hint, foreground="#64748b").grid(row=3, column=1, sticky="w")
+
+        ttk.Label(frame, text="Model").grid(row=4, column=0, sticky="w", pady=4)
+        self.model = tk.StringVar()
+        self.model_choice = ttk.Combobox(frame, textvariable=self.model, width=34)
+        self.model_choice.grid(row=4, column=1, sticky="ew", pady=4)
+
+        buttons = ttk.Frame(frame)
+        buttons.grid(row=5, column=0, columnspan=2, sticky="e", pady=(16, 0))
+        ttk.Button(buttons, text="Cancel", command=self.window.destroy).pack(side="right")
+        ttk.Button(buttons, text="Save", command=self.save).pack(side="right", padx=(0, 8))
+        self._provider_changed()
+
+    def selected(self) -> str:
+        return self.names[self.labels.index(self.provider.get())]
+
+    def _provider_changed(self, *_args) -> None:
+        name = self.selected()
+        info = PROVIDERS[name]
+        self.model_choice.configure(values=[model for model, _ in info.suggested_models])
+        self.model.set(config.get_model(name))
+        variable = config.env_key_name(name)
+        if variable:
+            self.key_hint.set(f"Using {variable}. Leave blank to keep it.")
+        elif config.get_api_key(name):
+            self.key_hint.set("A key is saved. Leave blank to keep it.")
+        else:
+            self.key_hint.set(f"Get a key at {info.key_url}")
+
+    def save(self) -> bool:
+        name = self.selected()
+        key = self.key.get().strip()
+        if not key and not config.get_api_key(name):
+            messagebox.showerror("AI settings", f"Enter your {PROVIDERS[name].label} API key.", parent=self.window)
+            return False
+        try:
+            if key:
+                config.set_api_key(name, key)
+            config.set_provider(name, self.model.get().strip() or PROVIDERS[name].default_model)
+        except OSError as exc:
+            messagebox.showerror("Could not save settings", str(exc), parent=self.window)
+            return False
+        self.saved = True
+        self.window.destroy()
+        return True
 
 
 class SysdocWindow:
@@ -27,13 +125,14 @@ class SysdocWindow:
         self.results: list[ScanResult] = []
         self.release: updater.Release | None = None
         root.title("Sysdoc — PC & game diagnostics")
-        root.geometry("880x660")
-        root.minsize(680, 480)
+        root.geometry("900x680")
+        root.minsize(700, 500)
         root.protocol("WM_DELETE_WINDOW", self.close)
         style = ttk.Style(root)
         if "vista" in style.theme_names():
             style.theme_use("vista")
-        style.configure("Title.TLabel", font=("Segoe UI", 24, "bold"))
+        style.configure("Title.TLabel", font=("Segoe UI", 24, "bold"), foreground=ACCENT)
+        style.configure("Subtitle.TLabel", font=("Segoe UI", 11), foreground="#475569")
         style.configure("TButton", padding=(12, 7))
 
         frame = ttk.Frame(root, padding=24)
@@ -44,18 +143,21 @@ class SysdocWindow:
         self.update_button = ttk.Button(header, text="Check for updates", command=self.update_app)
         self.update_button.pack(side="right")
         ttk.Label(header, text=f"v{__version__}", padding=(0, 0, 16, 0)).pack(side="right")
-        ttk.Label(frame, text="Find out what's slowing down your PC, network, or games.").pack(anchor="w", pady=(4, 20))
+        ttk.Label(frame, text="Find and fix what's wrong with your PC, network, or games.",
+                  style="Subtitle.TLabel").pack(anchor="w", pady=(4, 20))
 
         controls = ttk.Frame(frame)
         controls.pack(fill="x", pady=(0, 12))
         self.scan_kind = tk.StringVar(value="All checks")
         self.scan_choice = ttk.Combobox(controls, textvariable=self.scan_kind,
-                                      values=("All checks", "Network", "Storage"), state="readonly", width=18)
+                                        values=("All checks", "Network", "Storage"), state="readonly", width=18)
         self.scan_choice.pack(side="left", padx=(0, 8))
         self.scan_button = ttk.Button(controls, text="Run scan", command=self.scan)
         self.scan_button.pack(side="left")
-        self.key_button = ttk.Button(controls, text="Set AI key", command=self.configure)
-        self.key_button.pack(side="right")
+        self.assistant_button = ttk.Button(controls, text="Fix a problem with AI", command=self.open_assistant)
+        self.assistant_button.pack(side="right")
+        self.key_button = ttk.Button(controls, text="AI settings", command=self.configure)
+        self.key_button.pack(side="right", padx=(0, 8))
 
         self.output = ScrolledText(frame, wrap="word", font=("Segoe UI", 11), relief="solid",
                                    borderwidth=1, padx=14, pady=12, state="disabled")
@@ -64,9 +166,11 @@ class SysdocWindow:
             self.output.tag_configure(severity, foreground=color)
         self.output.tag_configure("heading", font=("Segoe UI", 12, "bold"))
         self._write("Ready when you are.\n", "heading")
-        self._write("Choose a scan and click Run scan. Scans run locally and do not need an AI key.\n\n"
-                    "For AI help, save your Gemini API key, then ask a question below. "
-                    "Your question and scan results will be sent to Google Gemini; API usage may incur charges.\n")
+        self._write("Choose a scan and click Run scan. Scans run locally and don't need an AI key.\n\n"
+                    "Click Fix a problem with AI to open the AI assistant. It investigates your PC with read-only "
+                    "checks, shows you a fix plan with the exact commands, and changes nothing until you approve.\n\n"
+                    "For quick AI answers here, open AI settings and add a Claude, GPT, or Gemini API key. Your "
+                    "question and scan results are sent to that provider, and API usage may incur charges.\n")
 
         question_row = ttk.Frame(frame)
         question_row.pack(fill="x", pady=(14, 4))
@@ -157,13 +261,27 @@ class SysdocWindow:
         self.status.set("Scan complete")
 
     def configure(self) -> None:
-        key = simpledialog.askstring("AI setup", "Gemini API key (saved on this PC):", show="*", parent=self.root)
-        if key and key.strip():
-            try:
-                save_api_key(key.strip())
-                self.status.set("AI key saved")
-            except OSError as exc:
-                messagebox.showerror("Could not save key", str(exc), parent=self.root)
+        dialog = AISettingsDialog(self.root)
+        self.root.wait_window(dialog.window)
+        if dialog.saved:
+            self.status.set(f"AI settings saved. Using {provider_label()}.")
+
+    def open_assistant(self) -> None:
+        # Like the updater: don't let a frozen app's bundled DLL folder or environment leak into the child app.
+        environment = dict(os.environ, PYINSTALLER_RESET_ENVIRONMENT="1")
+        bundle = getattr(sys, "_MEIPASS", None)
+        kernel32 = ctypes.windll.kernel32 if sys.platform == "win32" else None
+        if kernel32:
+            kernel32.SetDllDirectoryW(None)
+        try:
+            subprocess.Popen(assistant_command(), env=environment, close_fds=True,
+                             creationflags=getattr(subprocess, "CREATE_NEW_CONSOLE", 0))
+            self.status.set("Opened the AI assistant in a new window.")
+        except OSError as exc:
+            messagebox.showerror("Sysdoc", f"Couldn't open the AI assistant: {exc}", parent=self.root)
+        finally:
+            if kernel32 and bundle:
+                kernel32.SetDllDirectoryW(bundle)
 
     def ask(self) -> None:
         question = self.question.get().strip()
@@ -171,7 +289,7 @@ class SysdocWindow:
             return
         self._write(f"\nYou: {question}\n", "heading")
         self._run(lambda: ask_ai(question, self.results or Orchestrator([NetworkScanner(), StorageScanner()]).run_all()),
-                  lambda answer: self._write(f"\nSysdoc: {answer}\n"), "Gathering diagnostics and asking Gemini…")
+                  lambda answer: self._write(f"\nSysdoc: {answer}\n"), f"Gathering diagnostics and asking {provider_label()}…")
 
     def update_app(self) -> None:
         if self.release:
@@ -191,7 +309,7 @@ class SysdocWindow:
             messagebox.showinfo("Update available", f"Version {release.version} is available.\n\n{exc}", parent=self.root)
             return
         if not messagebox.askyesno("Update Sysdoc", f"Install version {release.version}?\n\n"
-                                   "Sysdoc will close and reopen. Your saved API key will be kept.", parent=self.root):
+                                   "Sysdoc will close and reopen. Your saved API keys will be kept.", parent=self.root):
             self.status.set(f"Version {release.version} is ready when you are.")
             return
         self._run(lambda: updater.download_update(release, lambda n, total: self.events.put(("progress", None, (n, total)))),

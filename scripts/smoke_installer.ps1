@@ -23,6 +23,14 @@ foreach ($pass in 1..2) {
     if ($LASTEXITCODE -ne 0 -or $actual.Trim() -ne "sysdoc $Version") { throw "Installed version mismatch: $actual" }
     & (Join-Path $installPath 'sysdoc.exe') scan storage
     if ($LASTEXITCODE -ne 0) { throw "Installed CLI scan failed" }
+    # Each provider's SDK must load in the frozen assistant. The placeholder key is never sent anywhere.
+    foreach ($provider in @(@('claude', 'ANTHROPIC_API_KEY'), @('gpt', 'OPENAI_API_KEY'), @('gemini', 'GEMINI_API_KEY'))) {
+        Set-Item -Path "Env:$($provider[1])" -Value 'ci-placeholder'
+        '/exit' | & (Join-Path $installPath 'sysdoc.exe') --provider $provider[0]
+        $code = $LASTEXITCODE
+        Remove-Item -Path "Env:$($provider[1])"
+        if ($code -ne 0) { throw "Installed assistant failed to start with $($provider[0])" }
+    }
     if ((Get-Content -LiteralPath $configPath -Raw).Trim() -ne $config) { throw "Update changed the saved configuration" }
     if (-not (Test-Path -LiteralPath (Join-Path $installPath 'sysdoc-gui.exe'))) { throw "Desktop executable missing" }
     $report = Join-Path $testRoot "desktop-$pass.txt"
