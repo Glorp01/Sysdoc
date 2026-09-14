@@ -25,11 +25,11 @@ These checks are a safety net, not a sandbox. Read each plan before you approve 
 
 ## Install on Windows
 
-1. [Download the latest Sysdoc installer](https://github.com/Glorp01/Sysdoc/releases/latest/download/Sysdoc-Setup-x64.exe).
+1. [Download the latest Sysdoc installer](https://github.com/Glorp01/F.R.I.D.A.Y/releases/latest/download/Sysdoc-Setup-x64.exe).
 2. Run **Sysdoc-Setup-x64.exe**. It installs for your Windows account; Python and administrator access are not required.
 3. Open **Sysdoc AI Assistant** from the Start menu to fix a problem, or **Sysdoc** for the desktop scanner.
 
-Requires Windows 10 or 11, x64. The installer is currently unsigned, so Windows may show an unknown-publisher warning. Download it from this repository's [GitHub Releases](https://github.com/Glorp01/Sysdoc/releases) page.
+Requires Windows 10 or 11, x64. The installer is currently unsigned, so Windows may show an unknown-publisher warning. Download it from this repository's [GitHub Releases](https://github.com/Glorp01/F.R.I.D.A.Y/releases) page.
 
 ## Connect an AI provider
 
@@ -96,7 +96,7 @@ The Windows installer includes `%LOCALAPPDATA%\Programs\Sysdoc\sysdoc.exe` (or y
 
 Click **Check for updates** at the top of the desktop app, or run `sysdoc update`. When an update is available, confirm **Yes**. Sysdoc downloads and verifies the update, closes, upgrades the existing installation, and reopens. Your settings and API keys stay in `%USERPROFILE%\.sysdoc\config.json`.
 
-Updates come from published stable releases of `Glorp01/Sysdoc`. Downloads must match the release's SHA-256 digest and size before the installer can run. Failed downloads leave the installed app untouched. Updates require an internet connection and are installed only after you confirm them.
+Updates come from published stable releases of `Glorp01/F.R.I.D.A.Y`. Downloads must match the release's SHA-256 digest and size before the installer can run. Failed downloads leave the installed app untouched. Updates require an internet connection and are installed only after you confirm them.
 
 Existing users of the old standalone `sysdoc.exe` need to run the new installer once to get the desktop app and in-app updates. Python/source installations continue to use pip for upgrades.
 
@@ -105,8 +105,8 @@ Existing users of the old standalone `sysdoc.exe` need to run the new installer 
 Python 3.11+ with Tk is required. For development on Windows:
 
 ```powershell
-git clone https://github.com/Glorp01/Sysdoc.git
-cd Sysdoc
+git clone https://github.com/Glorp01/F.R.I.D.A.Y.git
+cd F.R.I.D.A.Y
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -e ".[dev]"

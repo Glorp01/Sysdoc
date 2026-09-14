@@ -20,6 +20,10 @@ DIGEST = hashlib.sha256(PAYLOAD).hexdigest()
 URL = f"https://github.com/{updater.REPOSITORY}/releases/download/v0.2.10/{updater.ASSET_NAME}"
 
 
+def test_updates_target_this_repository():
+    assert updater.REPOSITORY == "Glorp01/F.R.I.D.A.Y"
+
+
 def release_data():
     return {"tag_name": "v0.2.10", "draft": False, "prerelease": False, "assets": [{
         "name": updater.ASSET_NAME, "state": "uploaded", "browser_download_url": URL,
