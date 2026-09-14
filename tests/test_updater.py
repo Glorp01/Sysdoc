@@ -21,7 +21,7 @@ URL = f"https://github.com/{updater.REPOSITORY}/releases/download/v0.2.10/{updat
 
 
 def test_updates_target_this_repository():
-    assert updater.REPOSITORY == "Glorp01/F.R.I.D.A.Y"
+    assert updater.REPOSITORY == "Glorp01/Sysdoc"
 
 
 def release_data():
@@ -178,12 +178,11 @@ def test_cli_version():
 
 
 def test_cli_check_does_not_download(monkeypatch):
-    monkeypatch.setattr(updater, "check_for_update", lambda: updater.Release("0.2.10", URL, DIGEST, len(PAYLOAD)))
     download = Mock()
     monkeypatch.setattr(updater, "download_update", download)
     result = CliRunner().invoke(app, ["update", "--check"])
     assert result.exit_code == 0
-    assert "0.2.10" in result.stdout
+    assert "Sysdoc-Terminal-x64.exe" in result.stdout
     download.assert_not_called()
 
 

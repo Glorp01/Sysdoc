@@ -40,19 +40,8 @@ jobs:
           python -m pip install -e . --no-deps
       - name: Test
         run: python -m pytest -q
-      - name: Ensure Inno Setup is available
-        shell: pwsh
-        run: |
-          if (-not (Test-Path -LiteralPath "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
-            choco install innosetup --no-progress -y
-            if ($LASTEXITCODE -ne 0) { throw "Inno Setup installation failed" }
-          }
-      - name: Build desktop app, CLI, and installer
+      - name: Build standalone terminal app and Python packages
         run: ./scripts/build_windows.ps1
-      - name: Test installed app and in-place upgrade
-        env:
-          RELEASE_VERSION: ${{ steps.version.outputs.version }}
-        run: ./scripts/smoke_installer.ps1 -Version $env:RELEASE_VERSION
       - uses: actions/upload-artifact@v4
         with:
           name: windows-release
@@ -88,11 +77,11 @@ jobs:
             fi
           else
             cat > notes.md <<'NOTES'
-          Download **Sysdoc-Setup-x64.exe** and run it once to install Sysdoc on Windows 10/11 (x64). Python is not required.
+          Download **Sysdoc-Terminal-x64.exe**, open PowerShell in its folder, and run `./Sysdoc-Terminal-x64.exe` on Windows 10/11 (x64). Python is not required.
 
-          Open **Sysdoc** from the Start menu. Use **Check for updates** to download future versions and update your installation. Sysdoc reopens when the update finishes; your saved API key stays on your PC.
+          Run `./Sysdoc-Terminal-x64.exe setup` to configure an AI provider, or `./Sysdoc-Terminal-x64.exe scan` for local diagnostics.
 
-          The installer includes the Sysdoc AI Assistant (`sysdoc.exe`), which diagnoses and fixes PC problems using your own Claude, GPT, or Gemini API key, plus the desktop scanner. The wheel and source archive are for Python users. `SHA256SUMS.txt` lists download checksums.
+          The wheel and source archive are for Python users. `SHA256SUMS.txt` lists download checksums.
           NOTES
             gh release create "$tag" --target "$COMMIT_SHA" --draft --title "Sysdoc $tag" --notes-file notes.md --generate-notes
           fi

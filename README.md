@@ -23,13 +23,13 @@ It uses your own API key for **Claude** (Anthropic), **GPT** (OpenAI), or **Gemi
 
 These checks are a safety net, not a sandbox. Read each plan before you approve it.
 
-## Install on Windows
+## Run the terminal app on Windows
 
-1. [Download the latest Sysdoc installer](https://github.com/Glorp01/F.R.I.D.A.Y/releases/latest/download/Sysdoc-Setup-x64.exe).
-2. Run **Sysdoc-Setup-x64.exe**. It installs for your Windows account; Python and administrator access are not required.
-3. Open **Sysdoc AI Assistant** from the Start menu to fix a problem, or **Sysdoc** for the desktop scanner.
+1. [Download the latest terminal app](https://github.com/Glorp01/Sysdoc/releases/latest/download/Sysdoc-Terminal-x64.exe).
+2. Open PowerShell in the download folder and run `./Sysdoc-Terminal-x64.exe`.
+3. Run `./Sysdoc-Terminal-x64.exe setup` to configure Claude, GPT, or Gemini.
 
-Requires Windows 10 or 11, x64. The installer is currently unsigned, so Windows may show an unknown-publisher warning. Download it from this repository's [GitHub Releases](https://github.com/Glorp01/F.R.I.D.A.Y/releases) page.
+Requires Windows 10 or 11, x64. The executable is unsigned, so Windows may show an unknown-publisher warning. Download it from the [GitHub Releases](https://github.com/Glorp01/Sysdoc/releases) page.
 
 ## Connect an AI provider
 
@@ -66,7 +66,7 @@ Run `sysdoc fix --plan-only "..."` to get a diagnosis and plan without running a
 
 ## Command line
 
-The Windows installer includes `%LOCALAPPDATA%\Programs\Sysdoc\sysdoc.exe` (or your chosen installation folder). Add that folder to your `PATH` to type `sysdoc` from any terminal.
+The downloaded executable can be run directly from PowerShell. Optionally rename it to `sysdoc.exe` and place it in a folder on your `PATH`.
 
 | Command | What it does |
 | --- | --- |
@@ -78,35 +78,22 @@ The Windows installer includes `%LOCALAPPDATA%\Programs\Sysdoc\sysdoc.exe` (or y
 | `sysdoc config` | Show providers, models, keys (masked), and scan permission |
 | `sysdoc models` | List the models your API key can use |
 | `sysdoc history` | Show fix steps Sysdoc has run |
-| `sysdoc gui` | Open the desktop app |
 | `sysdoc --version` | Show the current version |
-| `sysdoc update --check` | Check GitHub without installing |
-| `sysdoc update` | Confirm, download, and apply an update |
-| `sysdoc update --yes` | Apply an available update without a prompt |
+| `sysdoc update` | Show where to download the latest terminal executable |
 
 `--provider` and `--model` work with `sysdoc`, `fix`, and `ask`, for example `sysdoc --provider gemini`.
 
-## Use the desktop app
+## Update
 
-- Choose **All checks**, **Network**, or **Storage**, then click **Run scan**. Results show severity, an explanation, and suggested fixes.
-- Click **Fix a problem with AI** to open the AI assistant in a terminal window.
-- For quick answers in the app, click **AI settings**, choose a provider, and save its API key. Enter a question and click **Ask AI**. Your question and scan results are sent to that provider.
-
-## Update without downloading another installer yourself
-
-Click **Check for updates** at the top of the desktop app, or run `sysdoc update`. When an update is available, confirm **Yes**. Sysdoc downloads and verifies the update, closes, upgrades the existing installation, and reopens. Your settings and API keys stay in `%USERPROFILE%\.sysdoc\config.json`.
-
-Updates come from published stable releases of `Glorp01/F.R.I.D.A.Y`. Downloads must match the release's SHA-256 digest and size before the installer can run. Failed downloads leave the installed app untouched. Updates require an internet connection and are installed only after you confirm them.
-
-Existing users of the old standalone `sysdoc.exe` need to run the new installer once to get the desktop app and in-app updates. Python/source installations continue to use pip for upgrades.
+Download the latest `Sysdoc-Terminal-x64.exe` from the [GitHub Releases](https://github.com/Glorp01/Sysdoc/releases/latest) page. Your settings and API keys stay in `%USERPROFILE%\.sysdoc\config.json`.
 
 ## Install from source
 
 Python 3.11+ with Tk is required. For development on Windows:
 
 ```powershell
-git clone https://github.com/Glorp01/F.R.I.D.A.Y.git
-cd F.R.I.D.A.Y
+git clone https://github.com/Glorp01/Sysdoc.git
+cd Sysdoc
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -e ".[dev]"
@@ -120,19 +107,18 @@ Alternatively, download the wheel from a release and install it with `python -m 
 **Push changes to `main`.** The [Windows release workflow](.github/workflows/release.yml) automatically:
 
 1. Assigns a version using the series in `sysdoc/__init__.py` plus the workflow run number. With a base of `0.3.0`, run 20 produces `0.3.20`.
-2. Runs the tests, builds the desktop app and CLI, and creates a per-user Windows installer.
-3. Tests installation, an in-place upgrade, installed CLI diagnostics, settings preservation, and uninstallation on a disposable Windows runner.
-4. Uploads the installer, wheel, source distribution, and checksums to a draft GitHub Release, then publishes it after all uploads finish.
+2. Runs the tests and builds the standalone terminal executable and Python packages.
+3. Uploads the terminal executable, wheel, source distribution, and checksums to a draft GitHub Release, then publishes it after all uploads finish.
 
-Installed users can then click **Check for updates**. No manual tags, version edits, or artifact uploads are needed for routine updates. Pull requests build and test without publishing. You can also run the workflow manually from the Actions tab on `main`.
+Users can download the terminal executable from the published release. No manual tags, version edits, or artifact uploads are needed for routine updates. Pull requests build and test without publishing. You can also run the workflow manually from the Actions tab on `main`.
 
 To start a new release series, change the base version in `sysdoc/__init__.py`, for example to `0.4.0`. Keep the series increasing and preserve the workflow file/run counter. Re-running a completed release does not replace its published downloads. To roll back a faulty change, revert the code and push a new version; the updater will not downgrade users.
 
-The build job uses read-only repository access; only the publish job has `contents: write`. The workflow uses GitHub's built-in token and requires GitHub Actions to be enabled. Keep the repository public so installed apps can check and download releases without credentials.
+The build job uses read-only repository access; only the publish job has `contents: write`. The workflow uses GitHub's built-in token and requires GitHub Actions to be enabled.
 
 ## Build locally
 
-Use Windows x64, Python 3.13, and [Inno Setup 6](https://jrsoftware.org/isinfo.php). `requirements-build.txt` pins the tested Windows build dependencies.
+Use Windows x64 and Python 3.13. `requirements-build.txt` pins the tested Windows build dependencies.
 
 ```powershell
 python -m pip install -r requirements-build.txt
@@ -141,7 +127,7 @@ python -m pytest -q
 ./scripts/build_windows.ps1
 ```
 
-Release artifacts are written to `dist/release/`. The frozen executables are in `dist/windows/`. The installer smoke test is intended for disposable CI runners, since it registers and uninstalls a real app.
+Release artifacts are written to `dist/release/`. The standalone terminal executable is `dist/release/Sysdoc-Terminal-x64.exe`.
 
 ## Project layout
 
@@ -167,4 +153,4 @@ To add an investigation tool, write a read-only function that returns a `ToolOut
 - Stopping an administrator step with Ctrl+C may not end it immediately.
 - Ping parsing currently targets English-language Windows.
 - Drive health is based on free space; SMART data is not read yet.
-- In-app installation supports the Windows installer distribution; pip and source users update through their Python environment.
+- The Windows release is a standalone terminal executable; pip and source users update through their Python environment.

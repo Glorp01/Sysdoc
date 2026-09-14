@@ -166,29 +166,12 @@ def update(
     check: bool = typer.Option(False, "--check", help="Check without installing."),
     yes: bool = typer.Option(False, "--yes", "-y", help="Install without a confirmation prompt."),
 ) -> None:
-    """Check GitHub for a new version and update an installed Windows app."""
-    from sysdoc.core.updater import (
-        UpdateError, check_for_update, download_update, installed_directory, launch_installer,
+    """Explain how to update the standalone terminal executable."""
+    del check, yes
+    console.print(
+        "Terminal releases are standalone executables. Download the latest "
+        "Sysdoc-Terminal-x64.exe from https://github.com/Glorp01/Sysdoc/releases/latest."
     )
-    try:
-        console.print(f"Installed version: {__version__}. Checking GitHub...")
-        release = check_for_update()
-        if release is None:
-            console.print("No newer published version is available.")
-            return
-        console.print(f"Sysdoc {release.version} is available.")
-        if check:
-            return
-        installed_directory()
-        if not yes and not typer.confirm("Download and install the update? Sysdoc will close."):
-            return
-        with console.status("Downloading and verifying update..."):
-            installer = download_update(release)
-        launch_installer(installer)
-        console.print("Installing update. Sysdoc will reopen when installation finishes.")
-    except UpdateError as exc:
-        console.print(str(exc), style="red", markup=False)
-        raise typer.Exit(code=1)
 
 
 # --- Scans -------------------------------------------------------------------

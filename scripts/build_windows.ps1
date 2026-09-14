@@ -5,17 +5,13 @@ Push-Location -LiteralPath $repoPath
 try {
     $version = & $Python -c "from sysdoc import __version__; print(__version__)"
     if ($LASTEXITCODE -ne 0) { throw "Could not read app version" }
-    foreach ($entry in @(@("sysdoc", "packaging/cli_entry.py", "--console"), @("sysdoc-gui", "packaging/gui_entry.py", "--windowed"))) {
+    foreach ($entry in @(@("sysdoc", "packaging/cli_entry.py", "--console"))) {
         & $Python -m PyInstaller --noconfirm --clean --onefile $entry[2] --name $entry[0] --paths . --collect-all google.genai --copy-metadata google-genai --distpath dist/windows --workpath build/pyinstaller --specpath build $entry[1]
         if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed for $($entry[0])" }
     }
     & $Python -m build --no-isolation --outdir dist/release
     if ($LASTEXITCODE -ne 0) { throw "Python package build failed" }
-    $compiler = Get-Command ISCC.exe -ErrorAction SilentlyContinue
-    $compilerPath = if ($compiler) { $compiler.Source } else { "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
-    if (-not (Test-Path -LiteralPath $compilerPath)) { throw "Install Inno Setup 6 to build the Windows installer." }
-    & $compilerPath "/DAppVersion=$version" packaging/windows.iss
-    if ($LASTEXITCODE -ne 0) { throw "Installer build failed" }
+    Copy-Item -LiteralPath dist/windows/sysdoc.exe -Destination dist/release/Sysdoc-Terminal-x64.exe -Force
     $hashes = Get-ChildItem -LiteralPath dist/release -File | Where-Object { $_.Name -ne 'SHA256SUMS.txt' } | ForEach-Object {
         "$((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)"
     }

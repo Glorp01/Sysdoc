@@ -18,7 +18,7 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from sysdoc import __version__
 
-REPOSITORY = "Glorp01/F.R.I.D.A.Y"
+REPOSITORY = "Glorp01/Sysdoc"
 RELEASES_URL = f"https://github.com/{REPOSITORY}/releases/latest"
 LATEST_API_URL = f"https://api.github.com/repos/{REPOSITORY}/releases/latest"
 ASSET_NAME = "Sysdoc-Setup-x64.exe"
